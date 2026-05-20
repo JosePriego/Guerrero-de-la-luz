@@ -33,6 +33,7 @@ const shopCatalog = [
     { id: "knight_armor", name: "Placas Sagradas", value: 6, cost: 40, type: "armor" }
 ];
 
+// Configurar clics iniciales en las tarjetas de clase
 document.querySelectorAll(".card").forEach(card => {
     card.addEventListener("click", (e) => {
         let chosenClass = card.id.split("-")[1];
@@ -45,7 +46,9 @@ function setupHero(heroClass) {
     if (heroClass === "Mago") hero = new Character({ heroClass, maxHp: 90, maxMp: 60, baseAtk: 16, baseDef: 0 });
     if (heroClass === "Picaro") hero = new Character({ heroClass, maxHp: 110, maxMp: 30, baseAtk: 14, baseDef: 1 });
     
-    document.getElementById("class-selection").style.display = "none";
+    const selectionMenu = document.getElementById("class-selection");
+    if (selectionMenu) selectionMenu.style.display = "none";
+    
     gameState = "OVERWORLD";
     buildOverworldMatrix();
     initControls();
@@ -68,6 +71,7 @@ function updateGameCycle() {
 
 function drawClassicGrid() {
     const mapEl = document.getElementById("map");
+    if (!mapEl) return;
     mapEl.style.gridTemplateColumns = `repeat(${mapSize}, 24px)`;
     mapEl.innerHTML = "";
     let activePos = gameState === "OVERWORLD" ? overworldPos : dungeonPos;
@@ -94,28 +98,40 @@ function drawClassicGrid() {
 }
 
 function initControls() {
-    document.addEventListener("keydown", (e) => {
+    // Evitamos duplicar escuchadores limpiando eventos previos si los hubiera
+    const newKeyDownHandler = (e) => {
         if (gameState !== "OVERWORLD" && gameState !== "DUNGEON" && gameState !== "SHOP") return;
         if (e.key === "t" || e.key === "T") { triggerCheat(); return; }
         let offset = { r: 0, c: 0 };
-        if (e.key === "ArrowUp" || e.key === "w") offset.r = -1;
-        if (e.key === "ArrowDown" || e.key === "s") offset.r = 1;
-        if (e.key === "ArrowLeft" || e.key === "a") offset.c = -1;
-        if (e.key === "ArrowRight" || e.key === "d") offset.c = 1;
-        processMove(offset.r, offset.c);
-    });
+        if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") offset.r = -1;
+        if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") offset.r = 1;
+        if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") offset.c = -1;
+        if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") offset.c = 1;
+        if (offset.r !== 0 || offset.c !== 0) processMove(offset.r, offset.c);
+    };
+    
+    document.removeEventListener("keydown", window._kdHandler);
+    window._kdHandler = newKeyDownHandler;
+    document.addEventListener("keydown", window._kdHandler);
 
     const touchControls = { "touch-up": {r:-1,c:0}, "touch-down": {r:1,c:0}, "touch-left": {r:0,c:-1}, "touch-right": {r:0,c:1} };
     Object.keys(touchControls).forEach(id => {
-        document.getElementById(id).addEventListener("touchstart", (e) => {
-            e.preventDefault();
-            if (gameState !== "OVERWORLD" && gameState !== "DUNGEON" && gameState !== "SHOP") return;
-            let offset = touchControls[id];
-            processMove(offset.r, offset.c);
-        });
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.replaceWith(btn.cloneNode(true)); // Limpia limpiamente eventos previos
+            document.getElementById(id).addEventListener("touchstart", (e) => {
+                e.preventDefault();
+                if (gameState !== "OVERWORLD" && gameState !== "DUNGEON" && gameState !== "SHOP") return;
+                let offset = touchControls[id];
+                processMove(offset.r, offset.c);
+            });
+            document.getElementById(id).addEventListener("click", (e) => {
+                if (gameState !== "OVERWORLD" && gameState !== "DUNGEON" && gameState !== "SHOP") return;
+                let offset = touchControls[id];
+                processMove(offset.r, offset.c);
+            });
+        }
     });
-    
-    document.getElementById("cheat-btn").onclick = () => triggerCheat();
 }
 
 function processMove(dr, dc) {
@@ -164,11 +180,11 @@ function enterDungeon() {
     if (currentFloor === 5 || currentFloor === 10) {
         gameState = "SHOP";
         currentGrid[10][10] = "🏪";
-        logMessage("🏪 REFUGIO: Grimm el Forjador ha montado su campamento en la Planta " + currentFloor + ".", "system");
+        logMessage(`🏪 REFUGIO: Grimm el Forjador ha montado su campamento en la Planta ${currentFloor}.`, "system");
     } else if (currentFloor === 15) {
         gameState = "DUNGEON";
         currentGrid[10][10] = "👹";
-        logMessage("👹 CÚSPIDE: El Guardián de la Torre aguarda en la Planta 15. Prepárate.", "lore");
+        logMessage(`👹 CÚSPIDE: El Guardián de la Torre aguarda en la Planta 15. Prepárate.`, "lore");
     } else {
         gameState = "DUNGEON";
     }
@@ -190,15 +206,17 @@ function startCombat() {
     });
     currentEnemy.expReward = Math.floor((currentFloor === 15 ? 50 : 15) * scale);
     
-    if (currentFloor === 15) logMessage("🚨 COMBATE CONTRA JEFE: ¡" + currentEnemy.name + " desciende!", "enemy");
-    else logMessage("💥 ¡Un " + currentEnemy.name + " ruge frente a ti!", "enemy");
+    if (currentFloor === 15) logMessage(`🚨 COMBATE CONTRA JEFE: ¡${currentEnemy.name} desciende!`, "enemy");
+    else logMessage(`💥 ¡Un ${currentEnemy.name} ruge frente a ti!`, "enemy");
     
     document.getElementById("enemy-panel").style.display = "block";
     buildCombatButtons();
 }
 
 function buildCombatButtons() {
-    const grid = document.getElementById("action-grid"); grid.innerHTML = "";
+    const grid = document.getElementById("action-grid"); 
+    if (!grid) return;
+    grid.innerHTML = "";
     let b1 = document.createElement("button"); b1.innerText = "⚔️ Ataque";
     b1.onclick = () => executeTurn("ATTACK");
     let b2 = document.createElement("button"); b2.innerText = "✨ Especial (3 MP)";
@@ -215,7 +233,7 @@ function executeTurn(action) {
     if (action === "ATTACK") {
         let dmg = currentEnemy.calculateDefendedDamage(hero.baseAtk + wBonus + Math.floor(Math.random() * 3));
         currentEnemy.hp = Math.max(0, currentEnemy.hp - dmg);
-        logMessage("Cortas al enemigo causándole " + dmg + " HP.", "hero");
+        logMessage(`Cortas al enemigo causándole ${dmg} HP.`, "hero");
     } else if (action === "SKILL") {
         hero.mp -= 3;
         if (hero.heroClass === "Guerrero") { hero.applyStatus("SHIELDED", 2); logMessage("Activas Baluarte.", "hero"); }
@@ -234,7 +252,7 @@ function enemyTurn() {
 
     let dmg = hero.calculateDefendedDamage(currentEnemy.baseAtk);
     hero.hp = Math.max(0, hero.hp - dmg);
-    logMessage("El monstruo responde: pierdes " + dmg + " HP.", "enemy");
+    logMessage(`El monstruo responde: pierdes ${dmg} HP.`, "enemy");
 
     if (hero.hp <= 0) triggerGameOver();
     else { turnInProgress = false; updateGameCycle(); }
@@ -247,20 +265,20 @@ function handleVictory() {
     
     hero.gold += goldEarned; 
     hero.exp += currentEnemy.expReward;
-    logMessage("⚔️ Victoria: Recibes " + goldEarned + "g y +" + currentEnemy.expReward + " EXP.", "system");
+    logMessage(`⚔️ Victoria: Recibes ${goldEarned}g y +${currentEnemy.expReward} EXP.`, "system");
 
     if (Math.random() < 0.45 || currentFloor === 15) {
         let rolled = lootTable[Math.floor(Math.random() * lootTable.length)];
         let item = inventory.find(i => i.id === rolled.id);
         if (item) item.count++; else inventory.push({ ...rolled, count: 1 });
-        logMessage("🎁 Botín: Recoges " + rolled.name, "system");
+        logMessage(`🎁 Botín: Recoges ${rolled.name}`, "system");
     }
 
     if (hero.exp >= hero.nextLevelExp) {
         hero.level++; hero.exp -= hero.nextLevelExp; hero.nextLevelExp = Math.floor(hero.nextLevelExp * 1.5);
         hero.maxHp += 20; hero.maxMp += 5; hero.baseAtk += 2;
         hero.hp = hero.maxHp; hero.mp = hero.maxMp; 
-        logMessage("✨ ¡NIVEL UP! Alcanzas el Nivel " + hero.level + ". Tus atributos aumentan.", "system");
+        logMessage(`✨ ¡NIVEL UP! Alcanzas el Nivel ${hero.level}. Tus atributos aumentan.`, "system");
     }
 
     document.getElementById("enemy-panel").style.display = "none";
@@ -285,20 +303,20 @@ function useInventoryItem(itemId) {
 
     if (item.subType === "hp") {
         hero.hp = Math.min(hero.maxHp, hero.hp + item.value);
-        logMessage("Tomas Poción de Vida (+50 HP).", "hero");
+        logMessage(`Tomas Poción de Vida (+50 HP).`, "hero");
     } else if (item.subType === "weapon") {
         if (hero.weapon) {
             let old = inventory.find(i => i.id === hero.weapon.id);
             if (old) old.count++; else inventory.push({...hero.weapon, count: 1});
         }
-        hero.weapon = item; logMessage("Equipas: " + item.name + ".", "system");
+        hero.weapon = item; logMessage(`Equipas: ${item.name}.`, "system");
         item.count--;
     } else if (item.subType === "armor") {
         if (hero.armor) {
             let old = inventory.find(i => i.id === hero.armor.id);
             if (old) old.count++; else inventory.push({...hero.armor, count: 1});
         }
-        hero.armor = item; logMessage("Equipas: " + item.name + ".", "system");
+        hero.armor = item; logMessage(`Equipas: ${item.name}.`, "system");
         item.count--;
     }
     updateGameCycle();
@@ -311,7 +329,7 @@ function buyShopItem(itemIndex) {
         let item = inventory.find(i => i.id === prod.id);
         if (item) item.count++;
         else inventory.push({ id: prod.id, name: prod.name, type: prod.type, subType: prod.type === "weapon" ? "weapon" : (prod.type === "armor" ? "armor" : "hp"), value: prod.value, count: 1 });
-        logMessage("🛍️ Compras: " + prod.name + " por " + prod.cost + "g.", "hero");
+        logMessage(`🛍️ Compras: ${prod.name} por ${prod.cost}g.`, "hero");
     } else {
         logMessage("❌ No tienes suficiente oro.", "system");
     }
@@ -326,7 +344,9 @@ function triggerCheat() {
 }
 
 function triggerGameOver() {
-    gameState = "CRASHED"; document.getElementById("bsod-screen").style.display = "block";
+    gameState = "CRASHED"; 
+    const bsod = document.getElementById("bsod-screen");
+    if (bsod) bsod.style.display = "block";
 }
 
 function drawTextBar(current, max, size) {
@@ -336,57 +356,66 @@ function drawTextBar(current, max, size) {
 }
 
 function logMessage(text, type) {
-    const box = document.getElementById("log-box"); const entry = document.createElement("div");
+    const box = document.getElementById("log-box"); 
+    if (!box) return;
+    const entry = document.createElement("div");
     entry.style.color = type === "hero" ? "#5dade2" : (type === "enemy" ? "#ec7063" : "#f4d03f");
     entry.innerText = text; box.appendChild(entry); box.scrollTop = box.scrollHeight;
 }
 
 function updateUI() {
     let stateName = gameState;
-    if (gameState === "DUNGEON") stateName = "Torre P." + currentFloor;
-    if (gameState === "SHOP") stateName = "Grimm (P." + currentFloor + ")";
+    if (gameState === "DUNGEON") stateName = `Torre P.${currentFloor}`;
+    if (gameState === "SHOP") stateName = `Grimm (P.${currentFloor})`;
     
-    document.getElementById("gems-txt").innerText = gems + "/7";
-    document.getElementById("state-txt").innerText = stateName;
+    const gemsTxt = document.getElementById("gems-txt");
+    const stateTxt = document.getElementById("state-txt");
+    if (gemsTxt) gemsTxt.innerText = `${gems}/7`;
+    if (stateTxt) stateTxt.innerText = stateName;
     
     if (hero) {
-        document.getElementById("hero-class-title").innerText = "Sir Alden (" + hero.heroClass + " - Niv." + hero.level + ") [EXP: " + hero.exp + "/" + hero.nextLevelExp + "]";
-        document.getElementById("hero-hp").innerText = hero.hp + "/" + hero.maxHp;
-        document.getElementById("hero-mp").innerText = hero.mp + "/" + hero.maxMp + " [Oro: " + hero.gold + "g]";
+        const titleEl = document.getElementById("hero-class-title");
+        if (titleEl) titleEl.innerText = `Sir Alden (${hero.heroClass} - Niv.${hero.level}) [EXP: ${hero.exp}/${hero.nextLevelExp}]`;
+        
+        document.getElementById("hero-hp").innerText = `${hero.hp}/${hero.maxHp}`;
+        document.getElementById("hero-mp").innerText = `${hero.mp}/${hero.maxMp} [Oro: ${hero.gold}g]`;
         document.getElementById("hp-bar-visual").innerText = drawTextBar(hero.hp, hero.maxHp, 15);
         document.getElementById("mp-bar-visual").innerText = drawTextBar(hero.mp, hero.maxMp, 15);
         
         let wB = hero.weapon ? hero.weapon.value : 0; let aB = hero.armor ? hero.armor.value : 0;
-        document.getElementById("eq-weapon").innerText = hero.weapon ? hero.weapon.name + " (+" + wB + " ATK)" : "Espada de Madera (+0)";
-        document.getElementById("eq-armor").innerText = hero.armor ? hero.armor.name + " (+" + aB + " DEF)" : "Túnica de Tela (+0)";
+        document.getElementById("eq-weapon").innerText = hero.weapon ? `${hero.weapon.name} (+${wB} ATK)` : "Espada de Madera (+0)";
+        document.getElementById("eq-armor").innerText = hero.armor ? `${hero.armor.name} (+${aB} DEF)` : "Túnica de Tela (+0)";
         renderStatusTags("hero-statuses", hero);
     }
     
     if (currentEnemy && gameState === "COMBAT") {
-        // 🎯 INYECCIÓN DINÁMICA: Añadimos el valor del botín de EXP al lado del nombre del monstruo
-        document.getElementById("enemy-name").innerText = currentEnemy.name + " [Recompensa: +" + currentEnemy.expReward + " EXP]";
-        document.getElementById("enemy-hp").innerText = currentEnemy.hp + "/" + currentEnemy.maxHp;
+        document.getElementById("enemy-name").innerText = `${currentEnemy.name} [Recompensa: +${currentEnemy.expReward} EXP]`;
+        document.getElementById("enemy-hp").innerText = `${currentEnemy.hp}/${currentEnemy.maxHp}`;
         document.getElementById("enemy-bar-visual").innerText = drawTextBar(currentEnemy.hp, currentEnemy.maxHp, 12);
         renderStatusTags("enemy-statuses", currentEnemy);
     }
     
-    const invGrid = document.getElementById("inventory-list"); invGrid.innerHTML = "";
-    inventory.forEach(item => {
-        if (item.count > 0) {
-            let div = document.createElement("div"); div.className = "inv-item";
-            div.innerHTML = "<span>" + item.name + " (x" + item.count + ")</span>";
-            let btn = document.createElement("button"); btn.className = "btn-use"; btn.innerText = "Usar";
-            btn.onclick = () => useInventoryItem(item.id);
-            div.appendChild(btn); invGrid.appendChild(div);
-        }
-    });
+    const invGrid = document.getElementById("inventory-list"); 
+    if (invGrid) {
+        invGrid.innerHTML = "";
+        inventory.forEach(item => {
+            if (item.count > 0) {
+                let div = document.createElement("div"); div.className = "inv-item";
+                div.innerHTML = `<span>${item.name} (x${item.count})</span>`;
+                let btn = document.createElement("button"); btn.className = "btn-use"; btn.innerText = "Usar";
+                btn.onclick = () => useInventoryItem(item.id);
+                div.appendChild(btn); invGrid.appendChild(div);
+            }
+        });
+    }
 
     const grid = document.getElementById("action-grid");
+    if (!grid) return;
     if (gameState === "SHOP") {
         grid.innerHTML = "<div style='grid-column: 1/3; font-weight:bold; color:#f1c40f; text-align:center;'>🏪 TIENDA DE GRIMM (Toca para comprar)</div>";
         shopCatalog.forEach((prod, idx) => {
             let b = document.createElement("button");
-            b.innerText = prod.name + " (" + prod.cost + "g)";
+            b.innerText = `${prod.name} (${prod.cost}g)`;
             b.disabled = hero.gold < prod.cost;
             b.onclick = () => buyShopItem(idx);
             grid.appendChild(b);
@@ -402,9 +431,11 @@ function updateUI() {
 }
 
 function renderStatusTags(elementId, entity) {
-    const container = document.getElementById(elementId); container.innerHTML = "";
+    const container = document.getElementById(elementId); 
+    if (!container) return;
+    container.innerHTML = "";
     entity.statuses.forEach(s => {
         const span = document.createElement("span"); span.className = s.id === "SHIELDED" ? "buff-tag" : "debuff-tag";
-        span.innerText = s.id + "(" + s.duration + ")"; container.appendChild(span);
+        span.innerText = `${s.id}(${s.duration})`; container.appendChild(span);
     });
 }
