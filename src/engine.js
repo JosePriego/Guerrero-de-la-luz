@@ -27,7 +27,6 @@ const lootTable = [
     { id: "knight_armor", name: "Placas Sagradas", type: "equip", subType: "armor", value: 6 }
 ];
 
-// Catálogo de Grimm el Forjador
 const shopCatalog = [
     { id: "hp_pot", name: "Poción Vida", value: 50, cost: 15, type: "consumable" },
     { id: "steel_sword", name: "Espada Runas", value: 12, cost: 45, type: "weapon" },
@@ -129,7 +128,6 @@ function processMove(dr, dc) {
     }
 }
 
-// 🏛️ RECONEXIÓN: MAPA DE FLUJO DE 15 PLANTAS, TIENDAS Y JEFES
 function checkTriggers() {
     if (gameState === "OVERWORLD") {
         if (currentGrid[overworldPos.r][overworldPos.c] === "T") {
@@ -151,7 +149,6 @@ function checkTriggers() {
             startCombat(); 
         }
     } else if (gameState === "SHOP") {
-        // Si el jugador pisa la tienda de Grimm, el motor vuelve a permitir avanzar al siguiente piso
         currentFloor++;
         enterDungeon();
     }
@@ -164,15 +161,14 @@ function enterDungeon() {
     dungeonPos = { r: 1, c: 1 };
     currentGrid[dungeonPos.r][dungeonPos.c] = " ";
 
-    // Inyección de eventos estructurales según la planta exacta
     if (currentFloor === 5 || currentFloor === 10) {
         gameState = "SHOP";
-        currentGrid[10][10] = "🏪"; // Grimm aparece en la salida
-        logMessage(`🏪 REFUGIO: Grimm el Forjador ha montado su campamento en la Planta ${currentFloor}.`, "system");
+        currentGrid[10][10] = "🏪";
+        logMessage("🏪 REFUGIO: Grimm el Forjador ha montado su campamento en la Planta " + currentFloor + ".", "system");
     } else if (currentFloor === 15) {
         gameState = "DUNGEON";
-        currentGrid[10][10] = "👹"; // El jefe bloquea las escaleras
-        logMessage(`👹 CÚSPIDE: El Guardián de la Torre aguarda en la Planta 15. Prepárate.`, "lore");
+        currentGrid[10][10] = "👹";
+        logMessage("👹 CÚSPIDE: El Guardián de la Torre aguarda en la Planta 15. Prepárate.", "lore");
     } else {
         gameState = "DUNGEON";
     }
@@ -183,9 +179,8 @@ function startCombat() {
     let scale = 1 + (currentFloor - 1) * 0.15;
     let t = TOWERS[activeTowerIdx];
     
-    // Si estamos en la planta 15, el oponente es obligatoriamente el Jefe de la base de datos
     let eName = (currentFloor === 15) ? t.boss : t.monsters[Math.floor(Math.random() * t.monsters.length)];
-    let hpMultiplier = (currentFloor === 15) ? 2.5 : 1.0; // Los jefes tienen más vida
+    let hpMultiplier = (currentFloor === 15) ? 2.5 : 1.0;
 
     currentEnemy = new Character({ 
         heroClass: "Monstruo", name: eName, 
@@ -195,8 +190,8 @@ function startCombat() {
     });
     currentEnemy.expReward = Math.floor((currentFloor === 15 ? 50 : 15) * scale);
     
-    if (currentFloor === 15) logMessage(`🚨 COMBATE CONTRA JEFE: ¡${currentEnemy.name} desciende!`, "enemy");
-    else logMessage(`💥 ¡Un ${currentEnemy.name} ruge frente a ti!`, "enemy");
+    if (currentFloor === 15) logMessage("🚨 COMBATE CONTRA JEFE: ¡" + currentEnemy.name + " desciende!", "enemy");
+    else logMessage("💥 ¡Un " + currentEnemy.name + " ruge frente a ti!", "enemy");
     
     document.getElementById("enemy-panel").style.display = "block";
     buildCombatButtons();
@@ -220,7 +215,7 @@ function executeTurn(action) {
     if (action === "ATTACK") {
         let dmg = currentEnemy.calculateDefendedDamage(hero.baseAtk + wBonus + Math.floor(Math.random() * 3));
         currentEnemy.hp = Math.max(0, currentEnemy.hp - dmg);
-        logMessage(`Cortas al enemigo causándole ${dmg} HP.`, "hero");
+        logMessage("Cortas al enemigo causándole " + dmg + " HP.", "hero");
     } else if (action === "SKILL") {
         hero.mp -= 3;
         if (hero.heroClass === "Guerrero") { hero.applyStatus("SHIELDED", 2); logMessage("Activas Baluarte.", "hero"); }
@@ -239,38 +234,37 @@ function enemyTurn() {
 
     let dmg = hero.calculateDefendedDamage(currentEnemy.baseAtk);
     hero.hp = Math.max(0, hero.hp - dmg);
-    logMessage(`El monstruo responde: pierdes ${dmg} HP.`, "enemy");
+    logMessage("El monstruo responde: pierdes " + dmg + " HP.", "enemy");
 
     if (hero.hp <= 0) triggerGameOver();
     else { turnInProgress = false; updateGameCycle(); }
 }
 
 function handleVictory() {
-    logMessage(`¡Enemigo abatido!`, "system");
+    logMessage("¡Enemigo abatido!", "system");
     let goldMultiplier = (currentFloor === 15) ? 3 : 1;
     let goldEarned = Math.floor((10 + Math.random() * 6) * goldMultiplier);
     
     hero.gold += goldEarned; 
     hero.exp += currentEnemy.expReward;
-    logMessage(`⚔️ Victoria: Recibes ${goldEarned}g y +${currentEnemy.expReward} EXP.`, "system");
+    logMessage("⚔️ Victoria: Recibes " + goldEarned + "g y +" + currentEnemy.expReward + " EXP.", "system");
 
     if (Math.random() < 0.45 || currentFloor === 15) {
         let rolled = lootTable[Math.floor(Math.random() * lootTable.length)];
         let item = inventory.find(i => i.id === rolled.id);
         if (item) item.count++; else inventory.push({ ...rolled, count: 1 });
-        logMessage(`🎁 Botín: Recoges ${rolled.name}`, "system");
+        logMessage("🎁 Botín: Recoges " + rolled.name, "system");
     }
 
     if (hero.exp >= hero.nextLevelExp) {
         hero.level++; hero.exp -= hero.nextLevelExp; hero.nextLevelExp = Math.floor(hero.nextLevelExp * 1.5);
         hero.maxHp += 20; hero.maxMp += 5; hero.baseAtk += 2;
         hero.hp = hero.maxHp; hero.mp = hero.maxMp; 
-        logMessage(`✨ ¡NIVEL UP! Alcanzas el Nivel ${hero.level}. Tus atributos aumentan.`, "system");
+        logMessage("✨ ¡NIVEL UP! Alcanzas el Nivel " + hero.level + ". Tus atributos aumentan.", "system");
     }
 
     document.getElementById("enemy-panel").style.display = "none";
     
-    // Si el oponente era un jefe, forzamos la subida de nivel estructural del mapa
     if (currentFloor === 15) {
         TOWERS[activeTowerIdx].cleared = true; gems++;
         gameState = "OVERWORLD"; buildOverworldMatrix();
@@ -291,20 +285,20 @@ function useInventoryItem(itemId) {
 
     if (item.subType === "hp") {
         hero.hp = Math.min(hero.maxHp, hero.hp + item.value);
-        logMessage(`Tomas Poción de Vida (+50 HP).`, "hero");
+        logMessage("Tomas Poción de Vida (+50 HP).", "hero");
     } else if (item.subType === "weapon") {
         if (hero.weapon) {
             let old = inventory.find(i => i.id === hero.weapon.id);
             if (old) old.count++; else inventory.push({...hero.weapon, count: 1});
         }
-        hero.weapon = item; logMessage(`Equipas: ${item.name}.`, "system");
+        hero.weapon = item; logMessage("Equipas: " + item.name + ".", "system");
         item.count--;
     } else if (item.subType === "armor") {
         if (hero.armor) {
             let old = inventory.find(i => i.id === hero.armor.id);
             if (old) old.count++; else inventory.push({...hero.armor, count: 1});
         }
-        hero.armor = item; logMessage(`Equipas: ${item.name}.`, "system");
+        hero.armor = item; logMessage("Equipas: " + item.name + ".", "system");
         item.count--;
     }
     updateGameCycle();
@@ -317,7 +311,7 @@ function buyShopItem(itemIndex) {
         let item = inventory.find(i => i.id === prod.id);
         if (item) item.count++;
         else inventory.push({ id: prod.id, name: prod.name, type: prod.type, subType: prod.type === "weapon" ? "weapon" : (prod.type === "armor" ? "armor" : "hp"), value: prod.value, count: 1 });
-        logMessage(`🛍️ Compras: ${prod.name} por ${prod.cost}g.`, "hero");
+        logMessage("🛍️ Compras: " + prod.name + " por " + prod.cost + "g.", "hero");
     } else {
         logMessage("❌ No tienes suficiente oro.", "system");
     }
@@ -349,52 +343,50 @@ function logMessage(text, type) {
 
 function updateUI() {
     let stateName = gameState;
-    if (gameState === "DUNGEON") stateName = `Torre P.${currentFloor}`;
-    if (gameState === "SHOP") stateName = `Grimm (P.${currentFloor})`;
+    if (gameState === "DUNGEON") stateName = "Torre P." + currentFloor;
+    if (gameState === "SHOP") stateName = "Grimm (P." + currentFloor + ")";
     
-    document.getElementById("gems-txt").innerText = `${gems}/7`;
+    document.getElementById("gems-txt").innerText = gems + "/7";
     document.getElementById("state-txt").innerText = stateName;
     
     if (hero) {
-        // 🎯 MEJORA: Escribir explícitamente los datos numéricos de EXP en el texto superior
-        document.getElementById("hero-class-title").innerText = `Sir Alden (${hero.heroClass} - Niv.${hero.level}) [EXP: ${hero.exp}/${hero.nextLevelExp}]`;
-        document.getElementById("hero-hp").innerText = `${hero.hp}/${hero.maxHp}`;
-        document.getElementById("hero-mp").innerText = `${hero.mp}/${hero.maxMp} [Oro: ${hero.gold}g]`;
+        document.getElementById("hero-class-title").innerText = "Sir Alden (" + hero.heroClass + " - Niv." + hero.level + ") [EXP: " + hero.exp + "/" + hero.nextLevelExp + "]";
+        document.getElementById("hero-hp").innerText = hero.hp + "/" + hero.maxHp;
+        document.getElementById("hero-mp").innerText = hero.mp + "/" + hero.maxMp + " [Oro: " + hero.gold + "g]";
         document.getElementById("hp-bar-visual").innerText = drawTextBar(hero.hp, hero.maxHp, 15);
         document.getElementById("mp-bar-visual").innerText = drawTextBar(hero.mp, hero.maxMp, 15);
         
         let wB = hero.weapon ? hero.weapon.value : 0; let aB = hero.armor ? hero.armor.value : 0;
-        document.getElementById("eq-weapon").innerText = hero.weapon ? `${hero.weapon.name} (+${wB} ATK)` : "Espada de Madera (+0)";
-        document.getElementById("eq-armor").innerText = hero.armor ? `${hero.armor.name} (+${aB} DEF)` : "Túnica de Tela (+0)";
+        document.getElementById("eq-weapon").innerText = hero.weapon ? hero.weapon.name + " (+" + wB + " ATK)" : "Espada de Madera (+0)";
+        document.getElementById("eq-armor").innerText = hero.armor ? hero.armor.name + " (+" + aB + " DEF)" : "Túnica de Tela (+0)";
         renderStatusTags("hero-statuses", hero);
     }
     
     if (currentEnemy && gameState === "COMBAT") {
-        document.getElementById("enemy-name").innerText = currentEnemy.name;
-        document.getElementById("enemy-hp").innerText = `${currentEnemy.hp}/${currentEnemy.maxHp}`;
+        // 🎯 INYECCIÓN DINÁMICA: Añadimos el valor del botín de EXP al lado del nombre del monstruo
+        document.getElementById("enemy-name").innerText = currentEnemy.name + " [Recompensa: +" + currentEnemy.expReward + " EXP]";
+        document.getElementById("enemy-hp").innerText = currentEnemy.hp + "/" + currentEnemy.maxHp;
         document.getElementById("enemy-bar-visual").innerText = drawTextBar(currentEnemy.hp, currentEnemy.maxHp, 12);
         renderStatusTags("enemy-statuses", currentEnemy);
     }
     
-    // Render de mochila
     const invGrid = document.getElementById("inventory-list"); invGrid.innerHTML = "";
     inventory.forEach(item => {
         if (item.count > 0) {
             let div = document.createElement("div"); div.className = "inv-item";
-            div.innerHTML = `<span>${item.name} (x${item.count})</span>`;
+            div.innerHTML = "<span>" + item.name + " (x" + item.count + ")</span>";
             let btn = document.createElement("button"); btn.className = "btn-use"; btn.innerText = "Usar";
             btn.onclick = () => useInventoryItem(item.id);
-            div.appendChild(div); invGrid.appendChild(div);
+            div.appendChild(btn); invGrid.appendChild(div);
         }
     });
 
-    // GESTIÓN DINÁMICA DEL PANEL DE ACCIONES (TIENDA VS EXPLORACIÓN)
     const grid = document.getElementById("action-grid");
     if (gameState === "SHOP") {
         grid.innerHTML = "<div style='grid-column: 1/3; font-weight:bold; color:#f1c40f; text-align:center;'>🏪 TIENDA DE GRIMM (Toca para comprar)</div>";
         shopCatalog.forEach((prod, idx) => {
             let b = document.createElement("button");
-            b.innerText = `${prod.name} (${prod.cost}g)`;
+            b.innerText = prod.name + " (" + prod.cost + "g)";
             b.disabled = hero.gold < prod.cost;
             b.onclick = () => buyShopItem(idx);
             grid.appendChild(b);
@@ -413,6 +405,6 @@ function renderStatusTags(elementId, entity) {
     const container = document.getElementById(elementId); container.innerHTML = "";
     entity.statuses.forEach(s => {
         const span = document.createElement("span"); span.className = s.id === "SHIELDED" ? "buff-tag" : "debuff-tag";
-        span.innerText = `${s.id}(${s.duration})`; container.appendChild(span);
+        span.innerText = s.id + "(" + s.duration + ")"; container.appendChild(span);
     });
 }
