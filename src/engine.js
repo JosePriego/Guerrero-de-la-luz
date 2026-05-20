@@ -3,7 +3,6 @@
 import { TOWERS, STATUS_EFFECTS } from './database.js';
 import { Character } from './player.js';
 import { ProceduralDungeon } from './map.js';
-// PASO A: Importación del mapa de imágenes y el cargador asíncrono
 import { ASSETS, preloadAssets } from './assets.js';
 
 const canvas = document.getElementById("gameCanvas");
@@ -31,18 +30,20 @@ document.querySelectorAll(".card").forEach(card => {
     });
 });
 
-// PASO B: Configuración del héroe envuelta en la promesa de carga gráfica
 function setupHero(heroClass) {
     if (heroClass === "Guerrero") hero = new Character({ heroClass, maxHp: 140, maxMp: 20, baseAtk: 13, baseDef: 3 });
     if (heroClass === "Mago") hero = new Character({ heroClass, maxHp: 90, maxMp: 60, baseAtk: 16, baseDef: 0 });
     if (heroClass === "Picaro") hero = new Character({ heroClass, maxHp: 110, maxMp: 30, baseAtk: 14, baseDef: 1 });
     
-    // Bloqueamos el inicio del bucle hasta que las texturas estén en memoria
     preloadAssets().then(() => {
         document.getElementById("class-selection").style.display = "none";
         gameState = "OVERWORLD";
         buildOverworldMatrix();
-        gameLoop(); // Arranca el bucle a 60 FPS con las imágenes listas
+        
+        // ACTIVACIÓN DE ENTRADAS: Enlazamos los controles justo al arrancar el bucle principal
+        initControls(); 
+        
+        gameLoop(); 
     }).catch(err => {
         console.error("Explosión gráfica:", err);
         logMessage("🚨 ERROR: No se pudieron precargar los assets visuales.", "enemy");
@@ -66,33 +67,28 @@ function gameLoop() {
     if (gameState !== "CRASHED") requestAnimationFrame(gameLoop);
 }
 
-// PASO C: Renderizador de Canvas renovado con soporte para Sprites reales
 function renderCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     let activePos = gameState === "OVERWORLD" ? overworldPos : dungeonPos;
 
-    // 1. Dibujar el escenario baldosa a baldosa
     for (let r = 0; r < mapSize; r++) {
         for (let c = 0; c < mapSize; c++) {
             let tile = currentGrid[r][c];
             let px = c * TILE_RES;
             let py = r * TILE_RES;
 
-            // Capa base: Siempre dibujamos suelo para evitar transparencias
             ctx.drawImage(ASSETS.suelo, px, py, TILE_RES, TILE_RES);
 
             if (tile === "#") {
                 ctx.drawImage(ASSETS.muro, px, py, TILE_RES, TILE_RES);
             } else if (tile === "T") {
                 ctx.drawImage(ASSETS.torre, px, py, TILE_RES, TILE_RES);
-                
-                // Capa superior: Tinte translúcido según el elemento de la torre
                 let tow = TOWERS.find(t => t.r === r && t.c === c);
                 if (tow) {
                     ctx.fillStyle = tow.color;
                     ctx.globalAlpha = 0.25; 
                     ctx.fillRect(px, py, TILE_RES, TILE_RES);
-                    ctx.globalAlpha = 1.0;  // Reset de opacidad para el resto del ciclo
+                    ctx.globalAlpha = 1.0; 
                 }
             } else if (tile === "🪜") {
                 ctx.drawImage(ASSETS.escalera, px, py, TILE_RES, TILE_RES);
@@ -100,28 +96,66 @@ function renderCanvas() {
         }
     }
 
-    // 2. Dibujar entidades en la capa superior
     let pX = activePos.c * TILE_RES;
     let pY = activePos.r * TILE_RES;
     ctx.drawImage(ASSETS.jugador, pX, pY, TILE_RES, TILE_RES);
 }
 
-// --- GESTIÓN DE ENTRADAS ---
-document.addEventListener("keydown", (e) => {
-    if (gameState !== "OVERWORLD" && gameState !== "DUNGEON") return;
-    let pos = gameState === "OVERWORLD" ? overworldPos : dungeonPos;
-    let nextR = pos.r; let nextC = pos.c;
+// --- SISTEMA UNIFICADO DE ENTRADAS (SEGURO Y SINCRONIZADO) ---
+function initControls() {
+    // 1. Escuchador de teclado físico clásico
+    document.addEventListener("keydown", (e) => {
+        if (gameState !== "OVERWORLD" && gameState !== "DUNGEON") return;
+        let pos = gameState === "OVERWORLD" ? overworldPos : dungeonPos;
+        let nextR = pos.r; let nextC = pos.c;
 
-    if (e.key === "ArrowUp" || e.key === "w") nextR--;
-    if (e.key === "ArrowDown" || e.key === "s") nextR++;
-    if (e.key === "ArrowLeft" || e.key === "a") nextC--;
-    if (e.key === "ArrowRight" || e.key === "d") nextC++;
+        if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") nextR--;
+        if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") nextR++;
+        if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") nextC--;
+        if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") nextC++;
 
+        processMoveIntent(pos, nextR, nextC);
+    });
+
+    // 2. Mapeado de los botones del D-Pad virtual
+    const touchControls = {
+        "touch-up":    { r: -1, c: 0 },
+        "touch-down":  { r: 1,  c: 0 },
+        "touch-left":  { r: 0,  c: -1 },
+        "touch-right": { r: 0,  c: 1 }
+    };
+
+    Object.keys(touchControls).forEach(buttonId => {
+        const btnElement = document.getElementById(buttonId);
+        if (btnElement) {
+            // Escuchador táctil ultra-rápido para móviles
+            btnElement.addEventListener("touchstart", (e) => {
+                e.preventDefault(); 
+                if (gameState !== "OVERWORLD" && gameState !== "DUNGEON") return;
+                
+                let pos = gameState === "OVERWORLD" ? overworldPos : dungeonPos;
+                let offset = touchControls[buttonId];
+                processMoveIntent(pos, pos.r + offset.r, pos.c + offset.c);
+            });
+
+            // Compatibilidad secundaria por si se prueban los botones táctiles desde un PC con ratón
+            btnElement.addEventListener("click", (e) => {
+                if (gameState !== "OVERWORLD" && gameState !== "DUNGEON") return;
+                let pos = gameState === "OVERWORLD" ? overworldPos : dungeonPos;
+                let offset = touchControls[buttonId];
+                processMoveIntent(pos, pos.r + offset.r, pos.c + offset.c);
+            });
+        }
+    });
+}
+
+function processMoveIntent(pos, nextR, nextC) {
     if (nextR >= 0 && nextR < mapSize && nextC >= 0 && nextC < mapSize && currentGrid[nextR][nextC] !== "#") {
-        pos.r = nextR; pos.c = nextC;
+        pos.r = nextR; 
+        pos.c = nextC;
         checkStepTriggers();
     }
-});
+}
 
 function checkStepTriggers() {
     if (gameState === "OVERWORLD") {
@@ -172,7 +206,6 @@ function startCombat() {
     buildCombatActions();
 }
 
-// --- CONSOLA Y ACCIONES EN COMBATE ---
 function buildCombatActions() {
     const grid = document.getElementById("action-grid");
     grid.innerHTML = "";
