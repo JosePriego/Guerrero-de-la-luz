@@ -1,3 +1,4 @@
+// src/player.js
 import { STATUS_EFFECTS } from './database.js';
 
 export class Character {
@@ -10,14 +11,23 @@ export class Character {
         this.mp = config.maxMp;
         this.baseAtk = config.baseAtk;
         this.baseDef = config.baseDef;
+        
+        // SISTEMA DE PROGRESIÓN Y ECONOMÍA
         this.level = 1;
-        this.statuses = []; // Formato: { id: "BURNING", duration: 3 }
+        this.exp = 0;
+        this.nextLevelExp = 60;
+        this.gold = config.gold || 0;
+        this.weapon = null;
+        this.armor = null;
+        
+        this.statuses = []; 
+        this.temporaryDef = 0;
     }
 
     applyStatus(statusId, duration) {
         let existing = this.statuses.find(s => s.id === statusId);
         if (existing) {
-            existing.duration = Math.max(existing.duration, duration); // Refrescar duración
+            existing.duration = Math.max(existing.duration, duration);
         } else {
             this.statuses.push({ id: statusId, duration: duration });
         }
@@ -34,16 +44,16 @@ export class Character {
             
             current.duration--;
             if (current.duration <= 0) {
-                logMessageSystem(`El estado [${effectLogic.name}] de ${this.name} ha expirado.`, logFn);
+                if (logFn) logFn(`El estado [${effectLogic.name}] de ${this.name} ha expirado.`, "system");
                 this.statuses.splice(i, 1);
             }
         }
     }
 
     calculateDefendedDamage(rawDamage) {
-        let finalDamage = rawDamage - this.baseDef;
+        let armorBonus = this.armor ? this.armor.value : 0;
+        let finalDamage = rawDamage - (this.baseDef + armorBonus + this.temporaryDef);
         
-        // Comprobar si hay modificadores activos que alteren el daño entrante
         this.statuses.forEach(s => {
             let effectLogic = STATUS_EFFECTS[s.id];
             if (effectLogic && effectLogic.modifyIncomingDamage) {
@@ -53,8 +63,4 @@ export class Character {
         
         return Math.max(1, finalDamage);
     }
-}
-
-function logMessageSystem(txt, logFn) {
-    if (logFn) logFn(txt, "system");
 }
