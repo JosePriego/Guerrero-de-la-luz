@@ -2,25 +2,148 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>El Caballero de la Luz: Vanguardia Modular</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>El Caballero de la Luz: Vanguardia Modular Táctil</title>
     <style>
-        body { background-color: #0a0a0f; color: #e0e0ea; font-family: monospace; display: flex; flex-direction: column; align-items: center; margin-top: 15px; user-select: none; }
-        .game-layout { display: flex; gap: 20px; max-width: 1100px; }
-        .panel { background-color: #12121a; border: 3px solid #3d2f5c; border-radius: 6px; padding: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.8); }
-        canvas { background-color: #030305; border: 2px solid #231c33; border-radius: 4px; display: block; }
-        .right-side { width: 380px; display: flex; flex-direction: column; gap: 10px; }
-        .status-box, .log-box { background-color: #050508; border: 1px solid #231c33; border-radius: 4px; padding: 10px; font-size: 13px; }
-        .log-box { height: 150px; overflow-y: auto; color: #aaa; }
-        .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 5px; }
-        button { font-family: monospace; padding: 8px; font-weight: bold; background-color: #1f192e; color: white; border: 1px solid #3d2f5c; border-radius: 4px; cursor: pointer; }
+        body { 
+            background-color: #0a0a0f; 
+            color: #e0e0ea; 
+            font-family: monospace; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            margin-top: 15px; 
+            user-select: none; 
+        }
+        .game-layout { 
+            display: flex; 
+            gap: 20px; 
+            max-width: 1150px; 
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .panel { 
+            background-color: #12121a; 
+            border: 3px solid #3d2f5c; 
+            border-radius: 6px; 
+            padding: 15px; 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.9); 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        canvas { 
+            background-color: #030305; 
+            border: 2px solid #231c33; 
+            border-radius: 4px; 
+            display: block; 
+        }
+        .right-side { 
+            width: 380px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 10px; 
+        }
+        .status-box, .log-box { 
+            background-color: #050508; 
+            border: 1px solid #231c33; 
+            border-radius: 4px; 
+            padding: 10px; 
+            font-size: 13px; 
+        }
+        .log-box { 
+            height: 150px; 
+            overflow-y: auto; 
+            color: #aaa; 
+        }
+        .actions { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 6px; 
+            margin-top: 5px; 
+        }
+        button { 
+            font-family: monospace; 
+            padding: 8px; 
+            font-weight: bold; 
+            background-color: #1f192e; 
+            color: white; 
+            border: 1px solid #3d2f5c; 
+            border-radius: 4px; 
+            cursor: pointer; 
+        }
         button:hover:not(:disabled) { border-color: #f1c40f; }
         button:disabled { background-color: #0c0a12; color: #444; border-color: #111; cursor: not-allowed; }
+        
         .buff-tag { display: inline-block; background-color: #27ae60; color: white; padding: 1px 4px; font-size: 10px; border-radius: 3px; margin-right: 2px; font-weight: bold; }
         .debuff-tag { display: inline-block; background-color: #c0392b; color: white; padding: 1px 4px; font-size: 10px; border-radius: 3px; margin-right: 2px; font-weight: bold; }
-        #selector { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #08080c; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
-        .cards { display: flex; gap: 20px; margin: 20px; }
-        .card { background: #12121c; border: 2px solid #352a4f; padding: 15px; width: 160px; text-align: center; cursor: pointer; border-radius: 6px; }
-        .card:hover { border-color: #f1c40f; }
+        
+        /* SELECCIÓN DE CLASES */
+        #class-selection { 
+            position: fixed; 
+            top: 0; left: 0; 
+            width: 100vw; height: 100vh; 
+            background: #08080c; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            z-index: 10000; 
+        }
+        .cards { display: flex; gap: 20px; margin: 20px; flex-wrap: wrap; justify-content: center; }
+        .card { background: #12121c; border: 2px solid #352a4f; padding: 15px; width: 160px; text-align: center; cursor: pointer; border-radius: 6px; transition: 0.2s; }
+        .card:hover { border-color: #f1c40f; transform: translateY(-3px); }
+        .card h3 { color: #f1c40f; margin-top: 0; }
+        .card p { font-size: 11px; color: #aaa; }
+
+        /* CONTROLES TÁCTILES D-PAD */
+        .dpad-container {
+            display: grid;
+            grid-template-columns: repeat(3, 50px);
+            grid-template-rows: repeat(3, 50px);
+            gap: 5px;
+            margin-top: 15px;
+            justify-content: center;
+        }
+        .dpad-btn {
+            background-color: #231934;
+            border: 2px solid #4a3b63;
+            color: #e0e0ea;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            touch-action: manipulation; 
+        }
+        .dpad-btn:active {
+            background-color: #f1c40f;
+            color: #12121a;
+            border-color: #f39c12;
+        }
+        .dpad-empty {
+            visibility: hidden;
+        }
+
+        /* PANTALLA CRASHEO BSOD */
+        #bsod-screen {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: #0000aa;
+            color: #ffffff;
+            font-family: monospace;
+            padding: 50px;
+            box-sizing: border-box;
+            z-index: 9999;
+            font-size: 16px;
+            line-height: 1.5;
+            text-align: left;
+        }
+        .blink { animation: blinker 1s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
     </style>
 </head>
 <body>
@@ -34,13 +157,36 @@
         </div>
     </div>
 
+    <div id="bsod-screen">
+        <p>*** FATAL_ERROR: LIGHT_CORE_EXTINGUISHED ***</p>
+        <p>A fatal exception 0x000RETR0 has occurred at Sir_Alden_Core.sys. The Caballero de la Luz has fallen in combat. As a result, the global petrification process could not be halted.</p>
+        <br>
+        <p>Current status of the world: <span style="color: #ff5555; font-weight: bold;">PETRIFIED</span></p>
+        <p>All biological threads have been frozen. Memory dump complete.</p>
+        <br>
+        <p>* Press F5 to reload the system and alter destiny.</p>
+        <p class="blink">* SYSTEM HALTED. TERMINATING GAME PROCESS...</p>
+    </div>
+
     <h1>🛡️ EL CABALLERO DE LA LUZ: ENGINE V3 🛡️</h1>
     <div style="margin-bottom:10px; font-size:12px; color:#aaa;">Gemas: <span id="gems-txt" style="color:#2ecc71; font-weight:bold">0/7</span> | Estado: <span id="state-txt" style="color:#bb8fce">Explorando</span></div>
 
     <div class="game-layout">
         <div class="panel">
-            <!-- El motor gráfico pintará aquí de forma nativa -->
             <canvas id="gameCanvas" width="360" height="360"></canvas>
+            
+            <div class="dpad-container">
+                <div class="dpad-empty"></div>
+                <button class="dpad-btn" id="touch-up">▲</button>
+                <div class="dpad-empty"></div>
+                
+                <button class="dpad-btn" id="touch-left">◀</button>
+                <div class="dpad-empty"></div>
+                <button class="dpad-btn" id="touch-right">▶</button>
+                
+                <div class="dpad-empty"></div>
+                <button class="dpad-btn" id="touch-down">▼</button>
+            </div>
         </div>
 
         <div class="right-side">
@@ -62,7 +208,6 @@
         </div>
     </div>
 
-    <!-- Carga del script principal como MÓDULO nativo -->
     <script type="module" src="src/engine.js"></script>
 </body>
 </html>
