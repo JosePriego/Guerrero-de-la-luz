@@ -52,7 +52,7 @@
             font-size: 13px; 
         }
         .log-box { 
-            height: 150px; 
+            height: 140px; 
             overflow-y: auto; 
             color: #aaa; 
         }
@@ -78,6 +78,14 @@
         .buff-tag { display: inline-block; background-color: #27ae60; color: white; padding: 1px 4px; font-size: 10px; border-radius: 3px; margin-right: 2px; font-weight: bold; }
         .debuff-tag { display: inline-block; background-color: #c0392b; color: white; padding: 1px 4px; font-size: 10px; border-radius: 3px; margin-right: 2px; font-weight: bold; }
         
+        .equipment-box {
+            margin-top: 8px;
+            padding-top: 6px;
+            border-top: 1px dashed #3d2f5c;
+            font-size: 11px;
+            color: #f1c40f;
+        }
+
         /* SELECCIÓN DE CLASES */
         #class-selection { 
             position: fixed; 
@@ -195,6 +203,11 @@
                 <div class="stat">HP: <span id="hero-hp">0/0</span></div>
                 <div class="stat">MP: <span id="hero-mp">0/0</span></div>
                 <div class="stat">Estados: <div id="hero-statuses"></div></div>
+                
+                <div class="equipment-box">
+                    <div>⚔️ Arma: <span id="eq-weapon" style="color:white;">Espada de Madera</span></div>
+                    <div>🛡️ Pecho: <span id="eq-armor" style="color:white;">Túnica de Tela</span></div>
+                </div>
             </div>
 
             <div class="panel status-box" id="enemy-panel" style="display:none; border-color:#e74c3c">
@@ -204,6 +217,7 @@
             </div>
 
             <div class="log-box" id="log-box"></div>
+            
             <div class="actions" id="action-grid"></div>
         </div>
     </div>
