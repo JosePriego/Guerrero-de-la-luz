@@ -3,7 +3,6 @@
 import { TOWERS, STATUS_EFFECTS } from './database.js';
 import { Character } from './player.js';
 import { ProceduralDungeon } from './map.js';
-// PASO A: Importación del mapa de imágenes y el cargador asíncrono
 import { ASSETS, preloadAssets } from './assets.js';
 
 const canvas = document.getElementById("gameCanvas");
@@ -31,7 +30,6 @@ document.querySelectorAll(".card").forEach(card => {
     });
 });
 
-// PASO B: Configuración del héroe envuelta en la promesa de carga gráfica
 function setupHero(heroClass) {
     if (heroClass === "Guerrero") hero = new Character({ heroClass, maxHp: 140, maxMp: 20, baseAtk: 13, baseDef: 3 });
     if (heroClass === "Mago") hero = new Character({ heroClass, maxHp: 90, maxMp: 60, baseAtk: 16, baseDef: 0 });
@@ -66,7 +64,6 @@ function gameLoop() {
     if (gameState !== "CRASHED") requestAnimationFrame(gameLoop);
 }
 
-// PASO C: Renderizador de Canvas renovado con soporte para Sprites reales
 function renderCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     let activePos = gameState === "OVERWORLD" ? overworldPos : dungeonPos;
@@ -106,7 +103,7 @@ function renderCanvas() {
     ctx.drawImage(ASSETS.jugador, pX, pY, TILE_RES, TILE_RES);
 }
 
-// --- GESTIÓN DE ENTRADAS ---
+// --- GESTIÓN DE ENTRADAS ELECTRÓNICAS (TECLADO) ---
 document.addEventListener("keydown", (e) => {
     if (gameState !== "OVERWORLD" && gameState !== "DUNGEON") return;
     let pos = gameState === "OVERWORLD" ? overworldPos : dungeonPos;
@@ -117,11 +114,42 @@ document.addEventListener("keydown", (e) => {
     if (e.key === "ArrowLeft" || e.key === "a") nextC--;
     if (e.key === "ArrowRight" || e.key === "d") nextC++;
 
-    if (nextR >= 0 && nextR < mapSize && nextC >= 0 && nextC < mapSize && currentGrid[nextR][nextC] !== "#") {
-        pos.r = nextR; pos.c = nextC;
-        checkStepTriggers();
+    processMoveIntent(pos, nextR, nextC);
+});
+
+// --- SISTEMA DE CONTROLES TÁCTILES MÓVILES (D-PAD) ---
+const touchControls = {
+    "touch-up":    { r: -1, c: 0 },
+    "touch-down":  { r: 1,  c: 0 },
+    "touch-left":  { r: 0,  c: -1 },
+    "touch-right": { r: 0,  c: 1 }
+};
+
+Object.keys(touchControls).forEach(buttonId => {
+    const btnElement = document.getElementById(buttonId);
+    if (btnElement) {
+        btnElement.addEventListener("touchstart", (e) => {
+            e.preventDefault(); // Previene emulaciones fantasma de clics de escritorio en navegadores móviles
+            if (gameState !== "OVERWORLD" && gameState !== "DUNGEON") return;
+            
+            let pos = gameState === "OVERWORLD" ? overworldPos : dungeonPos;
+            let offset = touchControls[buttonId];
+            let nextR = pos.r + offset.r;
+            let nextC = pos.c + offset.c;
+
+            processMoveIntent(pos, nextR, nextC);
+        });
     }
 });
+
+// Núcleo unificado de validación de movimientos lógicos
+function processMoveIntent(pos, nextR, nextC) {
+    if (nextR >= 0 && nextR < mapSize && nextC >= 0 && nextC < mapSize && currentGrid[nextR][nextC] !== "#") {
+        pos.r = nextR; 
+        pos.c = nextC;
+        checkStepTriggers();
+    }
+}
 
 function checkStepTriggers() {
     if (gameState === "OVERWORLD") {
