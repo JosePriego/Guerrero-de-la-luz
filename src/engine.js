@@ -77,10 +77,16 @@ function drawClassicGrid() {
                 tile.classList.add("player"); tile.innerText = "🧙‍♂️";
             } else {
                 let cellData = currentGrid[r][c];
-                if (cellData === "#") { tile.classList.add("wall"); tile.innerText = "▓"; }
-                else if (cellData === "T") { tile.classList.add("tower"); tile.innerText = "∏"; }
-                else if (cellData === "🪜") { tile.classList.add("stairs"); tile.innerText = "🪜"; }
-                else { tile.classList.add("floor"); tile.innerText = "."; }
+                if (cellData === "#") { 
+                    tile.classList.add("wall"); tile.innerText = "▓"; 
+                } else if (cellData === "T") { 
+                    tile.classList.add("tower"); tile.innerText = "∏"; 
+                } else if (cellData === "🪜") { 
+                    tile.classList.add("stairs"); tile.innerText = "🪜"; 
+                } else { 
+                    // CORRECCIÓN: Si es espacio vacío " " o un punto original, se dibuja el suelo estético "."
+                    tile.classList.add("floor"); tile.innerText = "."; 
+                }
             }
             mapEl.appendChild(tile);
         }
