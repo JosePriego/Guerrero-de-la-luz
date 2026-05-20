@@ -12,11 +12,13 @@ export class Character {
         this.baseAtk = config.baseAtk;
         this.baseDef = config.baseDef;
         
-        // SISTEMA DE PROGRESIÓN Y ECONOMÍA
+        // ⚔️ SISTEMA DE EXPERIENCIA Y PROGRESIÓN (CORREGIDO)
         this.level = 1;
         this.exp = 0;
-        this.nextLevelExp = 60;
+        this.nextLevelExp = 60; // Límite base para subir al nivel 2
         this.gold = config.gold || 0;
+        
+        // RANURAS DE EQUIPAMIENTO ACTIVAS
         this.weapon = null;
         this.armor = null;
         
@@ -51,9 +53,11 @@ export class Character {
     }
 
     calculateDefendedDamage(rawDamage) {
+        // Sumamos la defensa base del héroe más el bonus de la armadura que lleve equipada
         let armorBonus = this.armor ? this.armor.value : 0;
         let finalDamage = rawDamage - (this.baseDef + armorBonus + this.temporaryDef);
         
+        // Filtramos el daño entrante a través de los estados alterados activos (como el escudo)
         this.statuses.forEach(s => {
             let effectLogic = STATUS_EFFECTS[s.id];
             if (effectLogic && effectLogic.modifyIncomingDamage) {
@@ -61,6 +65,6 @@ export class Character {
             }
         });
         
-        return Math.max(1, finalDamage);
+        return Math.max(1, finalDamage); // Garantizamos que al menos reciba 1 de daño
     }
 }
