@@ -1,13 +1,8 @@
 // src/engine.js
 
-import { TOWERS, STATUS_EFFECTS, LOOT_TABLE } from './database.js'; // Asegúrate de que LOOT_TABLE exista
+import { TOWERS, STATUS_EFFECTS } from './database.js';
 import { Character } from './player.js';
 import { ProceduralDungeon } from './map.js';
-import { ASSETS, preloadAssets } from './assets.js';
-
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-const TILE_RES = 24; 
 
 let currentGrid = [];
 let mapSize = 15;
@@ -22,19 +17,17 @@ let activeTowerIdx = null;
 let gems = 0;
 let turnInProgress = false;
 
-// Mochila global inicial del caballero
 let inventory = [
-    { id: "hp_pot", name: "Poción Vida", type: "consumable", subType: "hp", value: 50, price: 12, count: 2 }
+    { id: "hp_pot", name: "Poción Vida", type: "consumable", subType: "hp", value: 50, count: 2 }
 ];
 
-// Botín base copiado para seguridad del motor
 const lootTable = [
-    { id: "hp_pot", name: "Poción Vida", type: "consumable", subType: "hp", value: 50, price: 12 },
-    { id: "mp_pot", name: "Elixir Maná", type: "consumable", subType: "mp", value: 25, price: 15 },
-    { id: "steel_sword", name: "Espada Runas", type: "equip", subType: "weapon", value: 18, price: 50 },
-    { id: "knight_armor", name: "Placas Sagradas", type: "equip", subType: "armor", value: 8, price: 45 }
+    { id: "hp_pot", name: "Poción Vida", type: "consumable", subType: "hp", value: 50 },
+    { id: "steel_sword", name: "Espada Runas", type: "equip", subType: "weapon", value: 12 },
+    { id: "knight_armor", name: "Placas Sagradas", type: "equip", subType: "armor", value: 6 }
 ];
 
+// Configurar los botones de clase iniciales
 document.querySelectorAll(".card").forEach(card => {
     card.addEventListener("click", (e) => {
         let chosenClass = card.id.split("-")[1];
@@ -43,19 +36,15 @@ document.querySelectorAll(".card").forEach(card => {
 });
 
 function setupHero(heroClass) {
-    if (heroClass === "Guerrero") hero = new Character({ heroClass, maxHp: 140, maxMp: 20, baseAtk: 13, baseDef: 3, gold: 20 });
-    if (heroClass === "Mago") hero = new Character({ heroClass, maxHp: 90, maxMp: 60, baseAtk: 16, baseDef: 0, gold: 30 });
-    if (heroClass === "Picaro") hero = new Character({ heroClass, maxHp: 110, maxMp: 30, baseAtk: 14, baseDef: 1, gold: 55 });
+    if (heroClass === "Guerrero") hero = new Character({ heroClass, maxHp: 140, maxMp: 20, baseAtk: 13, baseDef: 3 });
+    if (heroClass === "Mago") hero = new Character({ heroClass, maxHp: 90, maxMp: 60, baseAtk: 16, baseDef: 0 });
+    if (heroClass === "Picaro") hero = new Character({ heroClass, maxHp: 110, maxMp: 30, baseAtk: 14, baseDef: 1 });
     
-    preloadAssets().then(() => {
-        document.getElementById("class-selection").style.display = "none";
-        gameState = "OVERWORLD";
-        buildOverworldMatrix();
-        initControls(); 
-        gameLoop(); 
-    }).catch(err => {
-        console.error("Explosión gráfica:", err);
-    });
+    document.getElementById("class-selection").style.display = "none";
+    gameState = "OVERWORLD";
+    buildOverworldMatrix();
+    initControls();
+    updateGameCycle();
 }
 
 function buildOverworldMatrix() {
@@ -67,84 +56,83 @@ function buildOverworldMatrix() {
     TOWERS.forEach(t => { if (!t.cleared) currentGrid[t.r][t.c] = "T"; });
 }
 
-function gameLoop() {
-    renderCanvas();
+function updateGameCycle() {
+    drawClassicGrid();
     updateUI();
-    if (gameState !== "CRASHED") requestAnimationFrame(gameLoop);
 }
 
-function renderCanvas() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+// RENDERIZADO CLÁSICO DE TEXTO ASCII EN EL DOM
+function drawClassicGrid() {
+    const mapEl = document.getElementById("map");
+    mapEl.style.gridTemplateColumns = `repeat(${mapSize}, 24px)`;
+    mapEl.innerHTML = "";
     let activePos = gameState === "OVERWORLD" ? overworldPos : dungeonPos;
 
     for (let r = 0; r < mapSize; r++) {
         for (let c = 0; c < mapSize; c++) {
-            let tile = currentGrid[r][c];
-            let px = c * TILE_RES; let py = r * TILE_RES;
-            ctx.drawImage(ASSETS.suelo, px, py, TILE_RES, TILE_RES);
-
-            if (tile === "#") ctx.drawImage(ASSETS.muro, px, py, TILE_RES, TILE_RES);
-            else if (tile === "T") {
-                ctx.drawImage(ASSETS.torre, px, py, TILE_RES, TILE_RES);
-                let tow = TOWERS.find(t => t.r === r && t.c === c);
-                if (tow) {
-                    ctx.fillStyle = tow.color; ctx.globalAlpha = 0.25; 
-                    ctx.fillRect(px, py, TILE_RES, TILE_RES); ctx.globalAlpha = 1.0; 
-                }
-            } else if (tile === "🪜") ctx.drawImage(ASSETS.escalera, px, py, TILE_RES, TILE_RES);
+            const tile = document.createElement("div");
+            tile.classList.add("tile");
+            
+            if (r === activePos.r && c === activePos.c) {
+                tile.classList.add("player"); tile.innerText = "🧙‍♂️";
+            } else {
+                let cellData = currentGrid[r][c];
+                if (cellData === "#") { tile.classList.add("wall"); tile.innerText = "▓"; }
+                else if (cellData === "T") { tile.classList.add("tower"); tile.innerText = "∏"; }
+                else if (cellData === "🪜") { tile.classList.add("stairs"); tile.innerText = "🪜"; }
+                else { tile.classList.add("floor"); tile.innerText = "."; }
+            }
+            mapEl.appendChild(tile);
         }
     }
-    ctx.drawImage(ASSETS.jugador, activePos.c * TILE_RES, activePos.r * TILE_RES, TILE_RES, TILE_RES);
 }
 
 function initControls() {
     document.addEventListener("keydown", (e) => {
         if (gameState !== "OVERWORLD" && gameState !== "DUNGEON") return;
-        let pos = gameState === "OVERWORLD" ? overworldPos : dungeonPos;
-        let nextR = pos.r; let nextC = pos.c;
-
-        if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") nextR--;
-        if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") nextR++;
-        if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") nextC--;
-        if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") nextC++;
-        processMoveIntent(pos, nextR, nextC);
+        if (e.key === "t" || e.key === "T") { triggerCheat(); return; }
+        let offset = { r: 0, c: 0 };
+        if (e.key === "ArrowUp" || e.key === "w") offset.r = -1;
+        if (e.key === "ArrowDown" || e.key === "s") offset.r = 1;
+        if (e.key === "ArrowLeft" || e.key === "a") offset.c = -1;
+        if (e.key === "ArrowRight" || e.key === "d") offset.c = 1;
+        processMove(offset.r, offset.c);
     });
 
     const touchControls = { "touch-up": {r:-1,c:0}, "touch-down": {r:1,c:0}, "touch-left": {r:0,c:-1}, "touch-right": {r:0,c:1} };
-    Object.keys(touchControls).forEach(buttonId => {
-        const btnElement = document.getElementById(buttonId);
-        if (btnElement) {
-            btnElement.addEventListener("touchstart", (e) => {
-                e.preventDefault(); 
-                if (gameState !== "OVERWORLD" && gameState !== "DUNGEON") return;
-                let pos = gameState === "OVERWORLD" ? overworldPos : dungeonPos;
-                let offset = touchControls[buttonId];
-                processMoveIntent(pos, pos.r + offset.r, pos.c + offset.c);
-            });
-        }
+    Object.keys(touchControls).forEach(id => {
+        document.getElementById(id).addEventListener("touchstart", (e) => {
+            e.preventDefault();
+            if (gameState !== "OVERWORLD" && gameState !== "DUNGEON") return;
+            let offset = touchControls[id];
+            processMove(offset.r, offset.c);
+        });
     });
+    
+    document.getElementById("cheat-btn").onclick = () => triggerCheat();
 }
 
-function processMoveIntent(pos, nextR, nextC) {
-    if (nextR >= 0 && nextR < mapSize && nextC >= 0 && nextC < mapSize && currentGrid[nextR][nextC] !== "#") {
-        pos.r = nextR; pos.c = nextC;
-        checkStepTriggers();
+function processMove(dr, dc) {
+    let pos = gameState === "OVERWORLD" ? overworldPos : dungeonPos;
+    let nr = pos.r + dr; let nc = pos.c + dc;
+    if (nr >= 0 && nr < mapSize && nc >= 0 && nc < mapSize && currentGrid[nr][nc] !== "#") {
+        pos.r = nr; pos.c = nc;
+        checkTriggers();
+        updateGameCycle();
     }
 }
 
-function checkStepTriggers() {
+function checkTriggers() {
     if (gameState === "OVERWORLD") {
-        let cell = currentGrid[overworldPos.r][overworldPos.c];
-        if (cell === "T") {
+        if (currentGrid[overworldPos.r][overworldPos.c] === "T") {
             let t = TOWERS.find(tow => tow.r === overworldPos.r && tow.c === overworldPos.c);
             if (t && !t.cleared) { activeTowerIdx = TOWERS.indexOf(t); currentFloor = 1; enterDungeon(); }
         }
     } else {
-        let cell = currentGrid[dungeonPos.r][dungeonPos.c];
-        if (cell === "🪜") {
+        if (currentGrid[dungeonPos.r][dungeonPos.c] === "🪜") {
             currentFloor++;
-            if (currentFloor > 15) {
-                logMessage("💎 ¡NÚCLEO PURIFICADO! Reclamas la gema elemental.", "system");
+            if (currentFloor > 5) {
+                logMessage("💎 ¡GEMA EXTRAÍDA CON ÉXITO!", "system");
                 TOWERS[activeTowerIdx].cleared = true; gems++;
                 gameState = "OVERWORLD"; buildOverworldMatrix();
             } else { enterDungeon(); }
@@ -155,62 +143,49 @@ function checkStepTriggers() {
 function enterDungeon() {
     gameState = "DUNGEON"; mapSize = 12;
     let generator = new ProceduralDungeon(12);
-    let build = generator.generate(); currentGrid = build.grid;
+    currentGrid = generator.generate().grid;
 }
 
 function startCombat() {
     gameState = "COMBAT";
-    let t = TOWERS[activeTowerIdx];
-    let eName = t.monsters[Math.floor(Math.random() * t.monsters.length)];
     let scale = 1 + (currentFloor - 1) * 0.15;
+    let eName = TOWERS[activeTowerIdx].monsters[Math.floor(Math.random() * TOWERS[activeTowerIdx].monsters.length)];
+    currentEnemy = new Character({ heroClass: "Monstruo", name: eName, maxHp: Math.floor(40 * scale), baseAtk: Math.floor(9 * scale), baseDef: 0 });
+    currentEnemy.expReward = Math.floor(15 * scale);
     
-    currentEnemy = new Character({ 
-        heroClass: "Monstruo", name: eName, 
-        maxHp: Math.floor(40 * scale), baseAtk: Math.floor(10 * scale), baseDef: 0 
-    });
-    currentEnemy.expReward = Math.floor(18 * scale); // Guardar recompensa de EXP
-    
-    logMessage(`💥 ¡Un ${currentEnemy.name} bloquea el camino!`, "enemy");
+    logMessage(`💥 ¡Un ${currentEnemy.name} ruge frente a ti!`, "enemy");
     document.getElementById("enemy-panel").style.display = "block";
-    buildCombatActions();
+    buildCombatButtons();
 }
 
-function buildCombatActions() {
+function buildCombatButtons() {
     const grid = document.getElementById("action-grid"); grid.innerHTML = "";
-    
-    let btnAtk = document.createElement("button");
-    btnAtk.innerText = "⚔️ Atacar Físico";
-    btnAtk.onclick = () => executeHeroTurn("ATTACK");
-    grid.appendChild(btnAtk);
-
-    let btnSkill = document.createElement("button");
-    if (hero.heroClass === "Guerrero") btnSkill.innerText = "🛡️ Baluarte";
-    if (hero.heroClass === "Mago") btnSkill.innerText = "🔥 Piroclasto";
-    if (hero.heroClass === "Picaro") btnSkill.innerText = "🧪 Daga Infecta";
-    btnSkill.onclick = () => executeHeroTurn("SKILL");
-    grid.appendChild(btnSkill);
+    let b1 = document.createElement("button"); b1.innerText = "⚔️ Ataque";
+    b1.onclick = () => executeTurn("ATTACK");
+    let b2 = document.createElement("button"); b2.innerText = "✨ Especial (3 MP)";
+    b2.onclick = () => executeTurn("SKILL");
+    grid.appendChild(b1); grid.appendChild(b2);
 }
 
-function executeHeroTurn(actionType) {
+function executeTurn(action) {
     if (turnInProgress) return; turnInProgress = true;
     hero.processTurnStartEffects(logMessage);
     if (hero.hp <= 0) { triggerGameOver(); return; }
 
-    let weaponBonus = hero.weapon ? hero.weapon.value : 0;
-    if (actionType === "ATTACK") {
-        let rawDmg = hero.baseAtk + weaponBonus + Math.floor(Math.random() * 4);
-        let finalDmg = currentEnemy.calculateDefendedDamage(rawDmg);
-        currentEnemy.hp = Math.max(0, currentEnemy.hp - finalDmg);
-        logMessage(`Atacas infligiendo ${finalDmg} de daño.`, "hero");
-    } 
-    else if (actionType === "SKILL") {
-        if (hero.heroClass === "Guerrero") { hero.applyStatus("SHIELDED", 2); logMessage(`Escudo divino activo.`, "hero"); } 
-        else if (hero.heroClass === "Mago") { currentEnemy.applyStatus("BURNING", 3); logMessage(`Enemigo envuelto en llamas.`, "hero"); } 
-        else if (hero.heroClass === "Picaro") { currentEnemy.applyStatus("POISONED", 4); logMessage(`Tajo venenoso asestado.`, "hero"); }
+    let wBonus = hero.weapon ? hero.weapon.value : 0;
+    if (action === "ATTACK") {
+        let dmg = currentEnemy.calculateDefendedDamage(hero.baseAtk + wBonus + Math.floor(Math.random() * 3));
+        currentEnemy.hp = Math.max(0, currentEnemy.hp - dmg);
+        logMessage(`Cortas al enemigo causándole ${dmg} HP.`, "hero");
+    } else if (action === "SKILL") {
+        hero.mp -= 3;
+        if (hero.heroClass === "Guerrero") { hero.applyStatus("SHIELDED", 2); logMessage("Activas Baluarte.", "hero"); }
+        if (hero.heroClass === "Mago") { currentEnemy.applyStatus("BURNING", 3); logMessage("Invocas Piroclasto.", "hero"); }
+        if (hero.heroClass === "Picaro") { currentEnemy.applyStatus("POISONED", 4); logMessage("Inyectas Daga Venenosa.", "hero"); }
     }
 
     if (currentEnemy.hp <= 0) { handleVictory(); return; }
-    setTimeout(enemyTurn, 700);
+    setTimeout(enemyTurn, 600);
 }
 
 function enemyTurn() {
@@ -218,49 +193,67 @@ function enemyTurn() {
     currentEnemy.processTurnStartEffects(logMessage);
     if (currentEnemy.hp <= 0) { handleVictory(); return; }
 
-    let rawDmg = currentEnemy.baseAtk;
-    let finalDmg = hero.calculateDefendedDamage(rawDmg);
-    hero.hp = Math.max(0, hero.hp - finalDmg);
-    logMessage(`El ${currentEnemy.name} ataca: sufres ${finalDmg} de daño.`, "enemy");
+    let dmg = hero.calculateDefendedDamage(currentEnemy.baseAtk);
+    hero.hp = Math.max(0, hero.hp - dmg);
+    logMessage(`El monstruo responde: pierdes ${dmg} HP.`, "enemy");
 
     if (hero.hp <= 0) triggerGameOver();
-    else turnInProgress = false;
+    else { turnInProgress = false; updateGameCycle(); }
 }
 
-// --- NUEVO: GESTIÓN DE RECOMPENSAS LÓGICAS AL GANAR ---
 function handleVictory() {
-    logMessage(`¡Victoria sobre ${currentEnemy.name}!`, "system");
+    logMessage(`¡Enemigo abatido!`, "system");
+    hero.gold += 12; hero.exp += currentEnemy.expReward;
     
-    // 1. Repartir monedas de oro y experiencia escaladas
-    let goldEarned = Math.floor(5 + Math.random() * 8) + (currentFloor * 2);
-    hero.gold += goldEarned;
-    hero.exp += currentEnemy.expReward;
-    logMessage(`Ganaste +${currentEnemy.expReward} EXP y 🪙 ${goldEarned}g.`, "system");
-
-    // 2. Probabilidad de soltar botín (40%)
-    if (Math.random() < 0.40) {
-        let luckyLoot = lootTable[Math.floor(Math.random() * lootTable.length)];
-        let invItem = inventory.find(i => i.id === luckyLoot.id);
-        if (invItem) invItem.count++; 
-        else inventory.push({ ...luckyLoot, count: 1 });
-        logMessage(`🎁 Encontraste en el suelo: ¡${luckyLoot.name}!`, "system");
+    if (Math.random() < 0.45) {
+        let rolled = lootTable[Math.floor(Math.random() * lootTable.length)];
+        let item = inventory.find(i => i.id === rolled.id);
+        if (item) item.count++; else inventory.push({ ...rolled, count: 1 });
+        logMessage(`🎁 Botín: Recoges ${rolled.name}`, "system");
     }
 
-    // 3. Evaluar subida de nivel
     if (hero.exp >= hero.nextLevelExp) {
         hero.level++; hero.exp -= hero.nextLevelExp; hero.nextLevelExp = Math.floor(hero.nextLevelExp * 1.5);
-        hero.maxHp += 20; hero.maxMp += 10; hero.baseAtk += 3;
-        hero.hp = hero.maxHp; hero.mp = hero.maxMp;
-        logMessage(`✨ ¡NIVEL UP! Alcanzas el Nivel ${hero.level}. Tus atributos aumentan.`, "system");
+        hero.maxHp += 20; hero.hp = hero.maxHp; logMessage(`✨ ¡NIVEL UP! Ahora eres Nivel ${hero.level}`, "system");
     }
 
     document.getElementById("enemy-panel").style.display = "none";
     gameState = "DUNGEON"; turnInProgress = false;
     document.getElementById("action-grid").innerHTML = "";
+    updateGameCycle();
+}
+
+function useInventoryItem(itemId) {
+    let item = inventory.find(i => i.id === itemId);
+    if (!item || item.count <= 0) return;
+
+    if (item.subType === "hp") {
+        hero.hp = Math.min(hero.maxHp, hero.hp + item.value);
+        logMessage(`Tomas Poción de Vida (+50 HP).`, "hero");
+    } else if (item.subType === "weapon") {
+        hero.weapon = item; logMessage(`Equipas: ${item.name}.`, "system");
+    } else if (item.subType === "armor") {
+        hero.armor = item; logMessage(`Equipas: ${item.name}.`, "system");
+    }
+    item.count--;
+    updateGameCycle();
+}
+
+function triggerCheat() {
+    let code = prompt("🔮 [TRUCOS]\nEscribe: god / gold");
+    if (code === "god") { hero.maxHp = 9999; hero.hp = 9999; hero.baseAtk = 999; }
+    if (code === "gold") hero.gold += 500;
+    updateGameCycle();
 }
 
 function triggerGameOver() {
     gameState = "CRASHED"; document.getElementById("bsod-screen").style.display = "block";
+}
+
+function drawTextBar(current, max, size) {
+    let pct = current / max; let filled = Math.round(size * pct);
+    let str = "["; for (let i = 0; i < size; i++) str += i < filled ? "|" : ".";
+    return str + "]";
 }
 
 function logMessage(text, type) {
@@ -269,68 +262,39 @@ function logMessage(text, type) {
     entry.innerText = text; box.appendChild(entry); box.scrollTop = box.scrollHeight;
 }
 
-// RENDERIZADOR COMPLETO DEL PANEL DE ESTADÍSTICAS E INVENTARIO COPIADO DE V2
 function updateUI() {
     document.getElementById("gems-txt").innerText = `${gems}/7`;
     document.getElementById("state-txt").innerText = gameState;
     if (hero) {
         document.getElementById("hero-class-title").innerText = `Sir Alden (${hero.heroClass} - Niv.${hero.level})`;
-        document.getElementById("hero-hp").innerText = `${hero.hp}/${hero.maxHp} [EXP: ${hero.exp}/${hero.nextLevelExp}]`;
+        document.getElementById("hero-hp").innerText = `${hero.hp}/${hero.maxHp}`;
         document.getElementById("hero-mp").innerText = `${hero.mp}/${hero.maxMp} [Oro: ${hero.gold}g]`;
+        document.getElementById("hp-bar-visual").innerText = drawTextBar(hero.hp, hero.maxHp, 15);
+        document.getElementById("mp-bar-visual").innerText = drawTextBar(hero.mp, hero.maxMp, 15);
+        
+        let wB = hero.weapon ? hero.weapon.value : 0; let aB = hero.armor ? hero.armor.value : 0;
+        document.getElementById("eq-weapon").innerText = hero.weapon ? `${hero.weapon.name} (+${wB} ATK)` : "Espada de Madera (+0)";
+        document.getElementById("eq-armor").innerText = hero.armor ? `${hero.armor.name} (+${aB} DEF)` : "Túnica de Tela (+0)";
         renderStatusTags("hero-statuses", hero);
     }
     if (currentEnemy && gameState === "COMBAT") {
         document.getElementById("enemy-name").innerText = currentEnemy.name;
         document.getElementById("enemy-hp").innerText = `${currentEnemy.hp}/${currentEnemy.maxHp}`;
+        document.getElementById("enemy-bar-visual").innerText = drawTextBar(currentEnemy.hp, currentEnemy.maxHp, 12);
         renderStatusTags("enemy-statuses", currentEnemy);
     }
-    renderInventoryUI();
-}
-
-// Pintar la lista de la mochila de forma reactiva en el menú de acciones
-function renderInventoryUI() {
-    const grid = document.getElementById("action-grid");
-    if (gameState === "COMBAT" || gameState === "CLASS_SELECT") return; // En combate prioriza botones de ataque
-
-    // Si estás explorando el laberinto o el mapamundi, el panel lateral se convierte en tu Mochila
-    grid.innerHTML = "<div style='grid-column: 1/3; font-weight:bold; color:#e67e22; text-align:center;'>🎒 MOCHILA (Toca para usar/equipar)</div>";
+    
+    // Renderizar Mochila fija en su caja independiente
+    const invGrid = document.getElementById("inventory-list"); invGrid.innerHTML = "";
     inventory.forEach(item => {
         if (item.count > 0) {
-            let btn = document.createElement("button");
-            btn.innerText = `${item.name} (x${item.count})`;
-            btn.onclick = () => handleUseItem(item);
-            grid.appendChild(btn);
+            let div = document.createElement("div"); div.className = "inv-item";
+            div.innerHTML = `<span>${item.name} (x${item.count})</span>`;
+            let btn = document.createElement("button"); btn.className = "btn-use"; btn.innerText = "Usar";
+            btn.onclick = () => useInventoryItem(item.id);
+            div.appendChild(btn); invGrid.appendChild(div);
         }
     });
-}
-
-function handleUseItem(item) {
-    if (item.type === "consumable") {
-        if (item.subType === "hp") {
-            if (hero.hp === hero.maxHp) return;
-            hero.hp = Math.min(hero.maxHp, hero.hp + item.value);
-            logMessage(`Consumes ${item.name}: +${item.value} HP.`, "hero");
-        } else {
-            if (hero.mp === hero.maxMp) return;
-            hero.mp = Math.min(hero.maxMp, hero.mp + item.value);
-            logMessage(`Bebes ${item.name}: +${item.value} MP.`, "hero");
-        }
-        item.count--;
-    } else if (item.type === "equip") {
-        if (item.subType === "weapon") {
-            if (hero.weapon) inventory.push({ ...hero.weapon, count: 1 });
-            hero.weapon = item;
-            document.getElementById("eq-weapon").innerText = `${item.name} (+${item.value} ATK)`;
-        } else {
-            if (hero.armor) inventory.push({ ...hero.armor, count: 1 });
-            hero.armor = item;
-            document.getElementById("eq-armor").innerText = `${item.name} (+${item.value} DEF)`;
-        }
-        // Quitar de la mochila común al equiparlo
-        item.count--;
-        logMessage(`Te has equipado: ${item.name}.`, "system");
-    }
-    updateUI();
 }
 
 function renderStatusTags(elementId, entity) {
