@@ -6,17 +6,14 @@ export class ProceduralDungeon {
     }
 
     generate() {
-        // 1. Inicializamos todo el mapa con el bloque de muro sólido '#'
         let grid = [];
         for (let r = 0; r < this.size; r++) {
             grid.push(new Array(this.size).fill("#"));
         }
 
-        // 2. Colocamos al minero excavador en la casilla de salida segura (1,1)
         let miner = { r: 1, c: 1 };
-        grid[miner.r][miner.c] = " "; // Las casillas caminables excavadas valdrán un espacio vacío " "
+        grid[miner.r][miner.c] = " "; 
 
-        // 3. Calculamos el volumen total de túneles transitables que deseamos perforar (45% del mapa)
         let totalTilesToCarve = Math.floor((this.size * this.size) * 0.45);
         let carved = 1;
 
@@ -26,10 +23,9 @@ export class ProceduralDungeon {
             let nr = miner.r + move.r;
             let nc = miner.c + move.c;
 
-            // Mantener al excavador dentro de los márgenes protegiendo los bordes exteriores del mapa
             if (nr > 0 && nr < this.size - 1 && nc > 0 && nc < this.size - 1) {
                 if (grid[nr][nc] === "#") {
-                    grid[nr][nc] = " "; // Perforamos el muro dejando un pasillo transitable " "
+                    grid[nr][nc] = " "; 
                     carved++;
                 }
                 miner.r = nr;
@@ -37,13 +33,11 @@ export class ProceduralDungeon {
             }
         }
         
-        // 4. Colocamos la escalera de salida en la última casilla excavada garantizando conectividad total
         grid[miner.r][miner.c] = "🪜"; 
         
         return { grid, exitPos: miner };
     }
 }
-        
         grid[miner.r][miner.c] = "🪜"; // Salida garantizada conectada
         return { grid, exitPos: miner };
     }
