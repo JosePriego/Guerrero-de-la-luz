@@ -38,7 +38,3 @@ export class ProceduralDungeon {
         return { grid, exitPos: miner };
     }
 }
-        grid[miner.r][miner.c] = "🪜"; // Salida garantizada conectada
-        return { grid, exitPos: miner };
-    }
-}
